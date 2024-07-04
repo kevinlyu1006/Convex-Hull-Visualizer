@@ -64,6 +64,8 @@ const CartesianPlane = forwardRef<CartesianPlaneRef, CartesianPlaneProps>((props
       }
     }
   };
+  CartesianPlane.displayName = 'CartesianPlane';
+
   const deleteAllLines=()=>{
     if (!chartInstance.current) return;
     for(let i = 0;i<chartInstance.current.data.datasets.length;i){
