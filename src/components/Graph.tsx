@@ -18,7 +18,6 @@ export interface CartesianPlaneRef {
   deleteDot: (x: number, y: number) => void;
   deleteAllLines:()=> void;
   updateDotColor:(x: number, y: number, r:number,g:number,b:number) => void;
-
 }
 
 class Point {
@@ -36,6 +35,7 @@ const CartesianPlane = forwardRef<CartesianPlaneRef, CartesianPlaneProps>((props
   const chartInstance = useRef<Chart | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [draggedPointIndex, setDraggedPointIndex] = useState(-1);
+  const currentTouch = useRef<Touch | null>(null);
 
   useEffect(() => {
     if (chartRef.current) {
@@ -52,11 +52,8 @@ const CartesianPlane = forwardRef<CartesianPlaneRef, CartesianPlaneProps>((props
           const point = dataset.data[0];
           if (typeof point === 'object' && point !== null && 'x' in point && 'y' in point) {
             if (point.x === x && point.y === y) {
-              // Remove the dataset
               datasets.splice(i, 1);
-              // Update the chart
               chartInstance.current.update();
-              // Exit the function as we've found and removed the dot
               return;
             }
           }
@@ -64,20 +61,19 @@ const CartesianPlane = forwardRef<CartesianPlaneRef, CartesianPlaneProps>((props
       }
     }
   };
+
   CartesianPlane.displayName = 'CartesianPlane';
 
-  const deleteAllLines=()=>{
+  const deleteAllLines = () => {
     if (!chartInstance.current) return;
-    for(let i = 0;i<chartInstance.current.data.datasets.length;i){
-      if(chartInstance.current.data.datasets[i].data.length !==1){
-        chartInstance.current.data.datasets.splice(i,1);
-      }else{
-        i+=1;
+    for(let i = 0; i < chartInstance.current.data.datasets.length;) {
+      if(chartInstance.current.data.datasets[i].data.length !== 1) {
+        chartInstance.current.data.datasets.splice(i, 1);
+      } else {
+        i += 1;
       }
     }
     chartInstance.current.update();
-
-
   }
 
   const addDraggableDot = (x: number, y: number) => {
@@ -115,13 +111,8 @@ const CartesianPlane = forwardRef<CartesianPlaneRef, CartesianPlaneProps>((props
           const point = dataset.data[0];
           if (typeof point === 'object' && point !== null && 'x' in point && 'y' in point) {
             if (point.x === x && point.y === y) {
-              // Calculate color based on position
-  
-              // Update dot color
               dataset.backgroundColor = `rgb(${r}, ${g}, ${b})`;
               dataset.borderColor = `rgb(${r}, ${g}, ${b})`;
-  
-              // Update the chart
               chartInstance.current.update();
               return;
             }
@@ -305,10 +296,27 @@ const CartesianPlane = forwardRef<CartesianPlaneRef, CartesianPlaneProps>((props
     };
   }, []);
 
-  const handleMouseDown = (event: React.MouseEvent<HTMLCanvasElement>) => {
+  const handleStart = (event: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     if (!chartInstance.current) return;
 
     const chart = chartInstance.current;
+    let clientX: number, clientY: number;
+
+    if ('touches' in event) {
+      if (event.touches.length !== 1) return;
+      const touch = event.touches[0];
+      clientX = touch.clientX;
+      clientY = touch.clientY;
+      currentTouch.current = touch as Touch;
+    } else {
+      clientX = event.clientX;
+      clientY = event.clientY;
+    }
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+
     const points = chart.getElementsAtEventForMode(event.nativeEvent, 'nearest', { intersect: true }, false);
 
     if (points.length > 0) {
@@ -317,13 +325,26 @@ const CartesianPlane = forwardRef<CartesianPlaneRef, CartesianPlaneProps>((props
     }
   };
 
-  const handleMouseMove = (event: React.MouseEvent<HTMLCanvasElement>) => {
+  const handleMove = (event: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     if (!isDragging || !chartInstance.current) return;
 
     const chart = chartInstance.current;
+    let clientX: number, clientY: number;
+
+    if ('touches' in event) {
+      if (event.touches.length !== 1) return;
+      const touch = event.touches[0];
+      if (currentTouch.current && touch.identifier !== currentTouch.current.identifier) return;
+      clientX = touch.clientX;
+      clientY = touch.clientY;
+    } else {
+      clientX = event.clientX;
+      clientY = event.clientY;
+    }
+
     const rect = event.currentTarget.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
 
     const xScale = chart.scales['x'] as LinearScale;
     const yScale = chart.scales['y'] as LinearScale;
@@ -337,7 +358,6 @@ const CartesianPlane = forwardRef<CartesianPlaneRef, CartesianPlaneProps>((props
       chart.data.datasets[draggedPointIndex].data[0] = { x: newX, y: newY };
       chart.update('none');
 
-      // Call the onPointUpdate prop using the custom ID
       const datasetId = (chart.data.datasets[draggedPointIndex] as any).customId;
       if (datasetId !== undefined && props.onPointUpdate) {
         props.onPointUpdate(datasetId, newX, newY);
@@ -382,19 +402,24 @@ const CartesianPlane = forwardRef<CartesianPlaneRef, CartesianPlaneProps>((props
     }
   };
 
-  const handleMouseUp = () => {
+  const handleEnd = () => {
     setIsDragging(false);
     setDraggedPointIndex(-1);
+    currentTouch.current = null;
   };
 
   return (
     <div style={{ width: '100%', backgroundColor: 'white' }} className='pt-16 h-full'>
       <canvas 
         ref={chartRef}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
+        onMouseDown={handleStart}
+        onMouseMove={handleMove}
+        onMouseUp={handleEnd}
+        onMouseLeave={handleEnd}
+        onTouchStart={handleStart}
+        onTouchMove={handleMove}
+        onTouchEnd={handleEnd}
+        onTouchCancel={handleEnd}
       />
     </div>
   );

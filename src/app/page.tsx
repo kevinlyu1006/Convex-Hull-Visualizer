@@ -345,7 +345,9 @@ export default function Home() {
 {!open && points.map((point) => (
               <div key={point.id}>
                 <ListItem  key={point.id}>
-                  <AdjustIcon color = "primary" />
+                <button className="rounded-xl hover:bg-gray-200" disabled={lines} onClick={()=>handleDelete(point.x,point.y,point.id)}>
+                    <DeleteIcon color="disabled" />
+                  </button>
                   </ListItem>
                 <Divider />
               </div>
