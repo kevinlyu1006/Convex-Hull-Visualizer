@@ -247,6 +247,7 @@ export default function Home() {
       }
       try {
         await convexHull(poin, poin.length);
+        //chartRef.current?.deleteAllLines();
       } finally {
         setIsRunning(false);
       }

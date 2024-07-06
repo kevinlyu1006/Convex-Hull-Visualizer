@@ -211,28 +211,7 @@ const CartesianPlane = forwardRef<CartesianPlaneRef, CartesianPlaneProps>((props
 
       const chartData: ChartData<'scatter', ScatterDataPoint[]> = {
         datasets: [
-          {
-            label: 'Cartesian Plane',
-            data: [
-              { x: -20, y: 0 },
-              { x: 20, y: 0 },
-            ],
-            borderColor: 'rgba(0, 0, 0, 1)',
-            borderWidth: 1,
-            pointRadius: 0,
-            showLine: true
-          },
-          {
-            label: 'Cartesian Plane',
-            data: [
-              { x: 0, y: -10 },
-              { x: 0, y: 10 }
-            ],
-            borderColor: 'rgba(0, 0, 0, 1)',
-            borderWidth: 1,
-            pointRadius: 0,
-            showLine: true
-          }
+          
         ]
       };
 
